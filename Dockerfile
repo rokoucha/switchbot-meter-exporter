@@ -12,6 +12,10 @@ RUN go build -o /app/swichbot-meter-exporter
 
 FROM docker.io/library/debian:bullseye-slim
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \
+    && apt install -y --no-install-recommends ca-certificates
+
 ARG GROUP_ID="998"
 ARG USER_NAME="swichbot-meter-exporter"
 ARG USER_ID="998"
