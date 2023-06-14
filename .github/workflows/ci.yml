@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -v
+
+      - name: Test
+        run: go test -v
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: check
+    if: ${{ github.ref_name == 'master' }}
+    strategy:
+      matrix:
+        GOARCH: ["amd64", "arm64"]
+        GOOS: ["darwin", "linux", "windows"]
+        include:
+          - GOOS: windows
+            X: .exe
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -o ./switchbot-meter-exporter$X
+        env:
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: ${{ matrix.GOOS }}
+          X: ${{ matrix.X }}
+
+      - name: Upload build result
+        uses: actions/upload-artifact@v3
+        with:
+          name: switchbot-meter-exporter-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
+          path: switchbot-meter-exporter${{ matrix.X }}
+
+  build-docker-image:
+    runs-on: ubuntu-22.04
+    needs: check
+    if: ${{ github.ref_name == 'master' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v3
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/rokoucha/switchbot-meter-exporter:latest
