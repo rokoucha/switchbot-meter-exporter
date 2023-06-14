@@ -85,20 +85,20 @@ func handleProbe(client *switchbot.Client, logger *slog.Logger) http.HandlerFunc
 			device.Hub,
 		).Set(float64(status.Humidity))
 
-		tempareture := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		temperature := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "tempareture",
+			Name:      "temperature",
 			Help:      "temperature in celsius",
 		}, labels)
-		tempareture.WithLabelValues(
+		temperature.WithLabelValues(
 			device.Name,
 			string(device.Type),
 			device.Hub,
 		).Set(float64(status.Temperature))
 
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(battery, humidity, tempareture)
+		registry.MustRegister(battery, humidity, temperature)
 
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 		h.ServeHTTP(w, r)
